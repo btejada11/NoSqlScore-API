@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="NoSQLScore.Application/NoSQLScore.Application.csproj" />
+  <Project Path="NoSQLScore.Domain/NoSQLScore.Domain.csproj" />
+  <Project Path="NoSQLScore.Infrastructure/NoSQLScore.Infrastructure.csproj" />
+  <Project Path="NoSQLScore/NoSQLScore.csproj" />
+</Solution>
