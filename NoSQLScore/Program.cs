@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using NoSQLScore.Application.Interfaces;
 using NoSQLScore.Application.Services;
@@ -12,28 +11,28 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 #region ================== Infrastructure ==================
-
+// MongoDB
 builder.Services.AddSingleton<MongoDbContext>();
-
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<ILigaRepository, LigaRepository>();
 builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
 
+// Cassandra
+builder.Services.AddSingleton<CassandraContext>();
+builder.Services.AddScoped<IPronosticoRepository, PronosticoRepository>();
+
 builder.Services.AddSingleton<IJwtService, JwtService>();
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
-
 #endregion
 
 #region ================== Application ==================
-
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<LigaService>();
 builder.Services.AddScoped<PartidoService>();
-
+builder.Services.AddScoped<PronosticoService>();
 #endregion
 
 #region ================== JWT Authentication ==================
-
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"]
     ?? throw new InvalidOperationException("JwtSettings:SecretKey es requerido.");
 
@@ -49,37 +48,29 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey =
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-
         ValidateIssuer = true,
         ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
-
         ValidateAudience = true,
         ValidAudience = builder.Configuration["JwtSettings:Audience"],
-
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
 });
-
 builder.Services.AddAuthorization();
-
 #endregion
 
 #region ================== Controllers & Swagger ==================
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "NoSQL-Score API",
         Version = "v1",
-        Description = "API REST para el proyecto NoSQL-Score — usuarios, ligas y partidos con MongoDB."
+        Description = "API REST para el proyecto NoSQL-Score — usuarios, ligas, partidos y pronósticos."
     });
 
-    // ✅ Definición JWT
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -90,7 +81,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Ingresa el token JWT. Ejemplo: Bearer {token}"
     });
 
-    // ✅ Requerimiento JWT
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -106,13 +96,11 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
 #endregion
 
 var app = builder.Build();
 
 #region ================== Middleware ==================
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -125,9 +113,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 #endregion
 
 app.Run();
